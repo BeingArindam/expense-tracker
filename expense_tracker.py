@@ -1,5 +1,5 @@
 import json
-import os
+from collections import defaultdict
 from datetime import datetime
 
 
@@ -7,10 +7,11 @@ DATA_FILE = "expenses.json"
 
 
 def load_expenses():
-    if not os.path.exists(DATA_FILE):
+    try:
+        with open(DATA_FILE, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
         return []
-    with open(DATA_FILE, "r") as f:
-        return json.load(f)
 
 
 def save_expenses(expenses):
@@ -34,7 +35,7 @@ def add_expense(expenses):
     description = input("Description: ").strip()
 
     expense = {
-        "id": len(expenses) + 1,
+        "id": max((e["id"] for e in expenses), default=0) + 1,
         "amount": round(amount, 2),
         "category": category,
         "description": description,
@@ -65,9 +66,9 @@ def view_by_category(expenses):
         print("No expenses recorded yet.")
         return
 
-    totals = {}
+    totals = defaultdict(float)
     for e in expenses:
-        totals[e["category"]] = totals.get(e["category"], 0) + e["amount"]
+        totals[e["category"]] += e["amount"]
 
     print(f"{'Category':<20} {'Total':>10}")
     print("-" * 32)
@@ -103,12 +104,13 @@ def delete_expense(expenses):
     if expense_id == 0:
         return
 
-    match = next((e for e in expenses if e["id"] == expense_id), None)
-    if not match:
+    for i, e in enumerate(expenses):
+        if e["id"] == expense_id:
+            expenses.pop(i)
+            break
+    else:
         print(f"No expense found with ID {expense_id}.")
         return
-
-    expenses.remove(match)
     save_expenses(expenses)
     print(f"Expense #{expense_id} deleted.")
 
@@ -133,13 +135,13 @@ def main():
 
         choice = input("\nChoose an option: ").strip()
 
-        if choice == "6":
+        if choice not in menu:
+            print("Invalid option. Please try again.")
+        elif menu[choice][1] is None:
             print("Goodbye!")
             break
-        elif choice in menu:
-            menu[choice][1]()
         else:
-            print("Invalid option. Please try again.")
+            menu[choice][1]()
 
 
 if __name__ == "__main__":
